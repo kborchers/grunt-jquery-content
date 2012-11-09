@@ -17,7 +17,7 @@ function htmlEscape(text) {
 var // modules
 	fs = require( "fs" ),
 	cheerio = require( "cheerio" ),
-	nsh = require( "node-syntaxhighlighter" ),
+	hljs = require( "highlight.js" ),
 	path = require( "path" ),
 	yaml = require( "js-yaml" );
 
@@ -182,7 +182,7 @@ grunt.registerHelper( "syntax-highlight", function( options ) {
 	// receives the innerHTML of a <code> element and if the first character
 	// is an encoded left angle bracket, we'll assume the language is html
 	function crudeHtmlCheck ( input ) {
-		return input.trim().indexOf( "&lt;" ) === 0 ? "html" : "";
+		return input.trim().indexOf( "&lt;" ) === 0 ? "xml" : "";
 	}
 
 	// when parsing the class attribute, make sure a class matches an actually
@@ -193,7 +193,7 @@ grunt.registerHelper( "syntax-highlight", function( options ) {
 			i = 0,
 			length = classes.length;
 		for ( ; i < length; i++ ) {
-			if ( nsh.getLanguage( classes[i].replace( /^lang-/, "" ) ) ) {
+			if ( hljs.LANGUAGES[ classes[i].replace( /^lang-/, "" ) ] ) {
 				return classes[i].replace( /^lang-/, "" );
 			}
 		}
@@ -208,16 +208,15 @@ grunt.registerHelper( "syntax-highlight", function( options ) {
 			code = $t.html(),
 			lang = $t.attr( "data-lang" ) ||
 				getLanguageFromClass( $t.attr( "class" ) ) ||
-				crudeHtmlCheck( code ),
+				crudeHtmlCheck( code ) ||
+				undefined,
 			linenumAttr = $t.attr( "data-linenum" ),
 			linenum = (linenumAttr === "true" ? 1 : linenumAttr) || 1,
 			gutter = linenumAttr === undefined ? false : true,
-			brush = nsh.getLanguage( lang ) || nsh.getLanguage( "js" ),
-			highlighted = nsh.highlight( code, brush, {
-				"first-line": linenum,
-				gutter: gutter
-			});
-		$t.parent().replaceWith( $( highlighted ).removeAttr( "id" ) );
+			// If we've got a language, use it, otherwise let highlight.js detect
+			highlighted = lang ? hljs.highlight( lang, code ) : hljs.highlightAuto( code );
+
+		$t.parent().replaceWith( "<pre class='highlighted-code'><code>" + highlighted.value + "</code></pre>" );
 	});
 
 	return $.html();
